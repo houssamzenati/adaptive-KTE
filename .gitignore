@@ -1,0 +1,88 @@
+# ----------------------------
+# Python build / cache
+# ----------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.dylib
+
+# ----------------------------
+# Environments
+# ----------------------------
+.venv/
+venv/
+env/
+ENV/
+.python-version
+.pdm.toml
+.pdm-python
+.eggs/
+*.egg
+*.egg-info/
+pip-wheel-metadata/
+
+# ----------------------------
+# Jupyter
+# ----------------------------
+.ipynb_checkpoints/
+*.nbconvert/
+*.nb.html
+
+# ----------------------------
+# Test / coverage / tooling
+# ----------------------------
+.pytest_cache/
+.coverage*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.tox/
+.nox/
+pytestdebug.log
+
+# ----------------------------
+# OS / Editors / IDE
+# ----------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.history/
+*.swp
+*.swo
+
+# ----------------------------
+# Generated data & plots
+# (comment out if you want to track results)
+# ----------------------------
+# Any data folders used in experiments
+data*/
+plots/
+
+# The oddly-named folder: data['adaptive']
+# (escape the brackets so Git matches literally)
+data\['adaptive'\]/
+
+# Common result artifacts
+*.csv
+*.tsv
+*.parquet
+*.feather
+*.arrow
+*.h5
+*.npz
+*.npy
+*.pickle
+*.pkl
+*.log
+
+# ----------------------------
+# Build / dist (if you package code)
+# ----------------------------
+build/
+dist/
+wheels/
+MANIFEST
