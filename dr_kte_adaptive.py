@@ -37,38 +37,62 @@ def _precompute_fold_quadratics(KFF, R, Delta):
 
 def _build_mu_R_Delta(KXX_fold, A_fold, lam):
     """
-    Build coefficient-space (dual) KRR operators, zero-padded to N×N.
-    Columns index samples (chrono order), output is dual coefficients.
+    Chronological KRR-based CME rows for each arm
+
+    Inputs:
+      - KXX_fold: (n×n) Gram on X within the fold, in chronological order.
+      - A_fold  : (n,) actions in the same chronological order.
+      - lam     : ridge parameter (λ).
+
+    Returns (all n×n, chronological-by-fold):
+      - R     = I - μ
+      - Delta = μ_1 - μ_0   with rows filled only for their own arm:
+                rows of controls get  (- μ_0 rows), rows of treated get (+ μ_1 rows)
     """
     n = A_fold.size
-    idx_control = np.where(A_fold == 0)[0]
-    idx_treated = np.where(A_fold == 1)[0]
-    if idx_control.size == 0 or idx_treated.size == 0:
+    idx_c = np.where(A_fold == 0)[0]
+    idx_t = np.where(A_fold == 1)[0]
+
+    if idx_c.size == 0 or idx_t.size == 0:
         raise ValueError("A fold has no samples for one arm; cannot build Δ and R.")
 
-    m_control, n_treated = idx_control.size, idx_treated.size
+    # Blocks
+    K_cc = KXX_fold[np.ix_(idx_c, idx_c)]
+    K_tt = KXX_fold[np.ix_(idx_t, idx_t)]
+    K_c_all = KXX_fold[np.ix_(idx_c, np.arange(n))]  # controls vs ALL cols (chrono)
+    K_t_all = KXX_fold[np.ix_(idx_t, np.arange(n))]  # treated  vs ALL cols (chrono)
 
-    # Gram blocks in chronological order
-    K_cc = KXX_fold[np.ix_(idx_control, idx_control)]  # controls
-    K_ct = KXX_fold[np.ix_(idx_control, idx_treated)]
-    K_tc = KXX_fold[np.ix_(idx_treated, idx_control)]
-    K_tt = KXX_fold[np.ix_(idx_treated, idx_treated)]
+    # Solve Arm-wise ridge systems to get CME *rows* in chronological column order
+    try:
+        mu0_rows = np.linalg.solve(
+            K_cc + lam * np.eye(K_cc.shape[0]), K_c_all
+        )  # shape (m_c, n)
+    except np.linalg.LinAlgError:
+        mu0_rows = np.linalg.lstsq(
+            K_cc + lam * np.eye(K_cc.shape[0]), K_c_all, rcond=None
+        )[0]
 
-    # Dual (hat) operators: μ̃0, μ̃1
-    mu0 = np.linalg.solve(
-        K_cc + lam * np.eye(m_control), np.hstack([K_cc, K_ct])
-    )  # shape (m_control × N)
-    mu1 = np.linalg.solve(
-        K_tt + lam * np.eye(n_treated), np.hstack([K_tc, K_tt])
-    )  # shape (n_treated × N)
+    try:
+        mu1_rows = np.linalg.solve(
+            K_tt + lam * np.eye(K_tt.shape[0]), K_t_all
+        )  # shape (m_t, n)
+    except np.linalg.LinAlgError:
+        mu1_rows = np.linalg.lstsq(
+            K_tt + lam * np.eye(K_tt.shape[0]), K_t_all, rcond=None
+        )[0]
 
-    # Zero-pad to N×N
-    mu0_pad = np.vstack([mu0, np.zeros((n_treated, n))])
-    mu1_pad = np.vstack([np.zeros((m_control, n)), mu1])
+    mu = np.zeros((n, n), dtype=KXX_fold.dtype)
+    mu[idx_c, :] = mu0_rows
+    mu[idx_t, :] = mu1_rows
 
-    mu = mu0_pad + mu1_pad
-    R = np.eye(n) - mu
-    Delta = mu1_pad - mu0_pad
+    # R and Δ in chronological order
+    R = np.eye(n, dtype=KXX_fold.dtype) - mu
+
+    Delta = np.zeros_like(mu)
+    # rows of controls carry -μ0; rows of treated carry +μ1
+    Delta[idx_c, :] = -mu0_rows
+    Delta[idx_t, :] = +mu1_rows
+
     return R, Delta
 
 
