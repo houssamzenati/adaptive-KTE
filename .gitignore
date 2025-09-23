@@ -86,3 +86,7 @@ build/
 dist/
 wheels/
 MANIFEST
+
+
+*.sh
+BariscanDebug/
