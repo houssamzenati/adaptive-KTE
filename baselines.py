@@ -55,7 +55,6 @@ def _phi_cdf(z):
 
 def Dprime_ATE(p, A, Y, m0, m1, p_min=0.0):
     # Uncentered DR score with E[D'] = τ
-    # (kept identical to your previous definition; p_min ignored in theory mode)
     term1 = m1 - m0
     term2 = (A / (p + 1e-12)) * (Y - m1)
     term3 = ((1 - A) / (1 - p + 1e-12)) * (Y - m0)
@@ -109,7 +108,6 @@ def _cadr_theory_estimate(X, A, Y, p_realized, m0, m1, policy_fn):
     w, D = _cadr_theory_predictable_weights(X, A, Y, p_realized, m0, m1, policy_fn)
     Wsum = float(np.sum(w))
     if Wsum <= 1e-12:
-        # degenerate fallback (should not happen if assumptions hold)
         tau_hat = float(np.mean(D))
         var_hat = float(np.var(D, ddof=1) / max(len(D), 1))
         return tau_hat, var_hat, w, D
