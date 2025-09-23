@@ -7,42 +7,6 @@ from sklearn.metrics import pairwise_distances
 from sklearn.linear_model import LogisticRegression
 
 
-def xMMD2(XY, T, w, kernel_function, **kwargs):
-    """The IPW-xKTE^2 statistic."""
-
-    N = len(XY)
-    N2 = N // 2
-
-    Ta = T[:N2]
-    Tb = T[N2:]
-
-    Ya = XY[:N2]
-    Yb = XY[N2:]
-    Y0a = Ya[T[:N2] == 0]
-    Y1a = Ya[T[:N2] == 1]
-    Y0b = Yb[T[N2:] == 0]
-    Y1b = Yb[T[N2:] == 1]
-    Y = np.vstack((Y0a, Y1a, Y0b, Y1b))
-
-    wa = w.squeeze()[:N2]
-    wb = w.squeeze()[N2:]
-    w0a = 1.0 / np.array(1 - wa[Ta == 0])
-    w0b = 1.0 / np.array(1 - wb[Tb == 0])
-    w1a = 1.0 / np.array(wa[Ta == 1])
-    w1b = 1.0 / np.array(wb[Tb == 1])
-    ww = np.concatenate((-w0a, w1a, -w0b, w1b))
-
-    # IPW
-    left_side = np.diag(ww[:N2])
-    right_side = np.diag(ww[N2:])
-
-    KY = pairwise_kernels(Y[:N2], Y[N2:], metric=kernel_function, **kwargs)
-    prod = left_side.T @ KY @ right_side
-
-    U = prod.mean(1)
-    return np.sqrt(len(U)) * U.mean() / U.std()
-
-
 def xMMD2dr(XY, w, Xcov, T, kernel_function, **kwargs):
     """The DR-xKTE^2 statistic."""
 
@@ -114,18 +78,6 @@ def xMMD2dr(XY, w, Xcov, T, kernel_function, **kwargs):
 
     U = prod.mean(1)
     return np.sqrt(len(U)) * U.mean() / U.std()
-
-
-def kernel_two_sample_test_agnostic(
-    Y, Xcov, T, kernel_function="rbf", p=0.5, verbose=False, random_state=None, **kwargs
-):
-    """Compute the statistic IPW-xKTE and its p-value given normal distribution."""
-    w = LogisticRegression(C=1e6, max_iter=1000).fit(Xcov, T).predict_proba(Xcov)[:, 1]
-    xmmd2 = xMMD2(Y, T, w, kernel_function, **kwargs)
-    if verbose:
-        print("xMMD^2 = %s" % xmmd2)
-    p_value = 1 - st.norm.cdf(xmmd2)
-    return xmmd2, p_value
 
 
 def kernel_dr_two_sample_test_agnostic(
