@@ -167,14 +167,8 @@ def cadr_test(X, A, Y, p_realized, m0, m1, P_all):
     se = float(np.sqrt(max(var_hat, 0.0)))
     stat = tau_hat / (se + 1e-12)
 
-    from math import erf, sqrt
-
-    Phi = lambda z: 0.5 * (1.0 + erf(z / np.sqrt(2.0)))
-    p_value = 2.0 * (1.0 - Phi(abs(stat)))
-
     return {
         "stat": float(stat),
-        "p_value": float(p_value),
         "tau_hat": float(tau_hat),
         "se": float(se),
         "method": "CADR (theory, P-matrix) normal",
@@ -283,10 +277,8 @@ def hadad_test(
     var_hat = V1 + V0
     se = float(np.sqrt(max(var_hat, 0.0)))
     stat = tau_hat / (se + 1e-12)
-    p_value = 2.0 * (1.0 - _phi_cdf(abs(stat)))
     return {
         "stat": float(stat),
-        "p_value": float(p_value),
         "tau_hat": float(tau_hat),
         "method": f"Hadad AIPW ({scheme}) normal",
     }
