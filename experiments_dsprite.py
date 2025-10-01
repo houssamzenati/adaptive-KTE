@@ -238,55 +238,60 @@ def run_from_arguments(parameters):
 # -----------------------
 # Aggregation
 # -----------------------
-def get_results_table():
-    alpha = 0.05
+def get_results_table(confidence_level=0.05):
+    from math import sqrt
+
     seeds = range(NB_SEEDS)
 
-    n_scen, n_meth = len(SCENARIOS), len(METHODS)
-    p_hat = np.full((n_scen, n_meth), np.nan)
-    se = np.full((n_scen, n_meth), np.nan)
-    n_eff = np.zeros((n_scen, n_meth), dtype=int)
+    p_hat_mat = np.full((len(SCENARIOS), len(METHODS)), np.nan, dtype=float)
+    se95_mat = np.full_like(p_hat_mat, np.nan, dtype=float)
 
     for i, scenario in enumerate(SCENARIOS):
         for j, method in enumerate(METHODS):
-            vals = []
+            pvals = []
             for seed in seeds:
                 fp = f"{RESULT_ROOT}/scenario{scenario}_{method}_seed{seed}.csv"
                 try:
                     df = pd.read_csv(fp)
-                    # One row per seed -> 0/1 reject indicator
-                    vals.append(float((df["p_value"] < alpha).mean()))
-                except FileNotFoundError:
+                    pvals.append(float(df["p_value"].iloc[0]))
+                except Exception:
                     continue
-            k = len(vals)
-            if k > 0:
-                ph = float(np.mean(vals))
-                p_hat[i, j] = ph
-                se[i, j] = float(np.sqrt(ph * (1.0 - ph) / k))
-                n_eff[i, j] = k
 
-    # Print numeric summaries
-    df_mean = pd.DataFrame(p_hat, index=SCENARIOS, columns=METHODS)
-    df_se = pd.DataFrame(se, index=SCENARIOS, columns=METHODS)
-    print("\nMean rejection rates:")
-    print(df_mean.round(2))
-    print("\nStandard error across seeds:")
-    print(df_se.round(3))
-    print("\nEffective seeds per cell:")
-    print(pd.DataFrame(n_eff, index=SCENARIOS, columns=METHODS))
+            N = len(pvals)
+            if N > 0:
+                pvals = np.array(pvals, dtype=float)
+                rejects = (pvals < confidence_level).astype(float)
+                p_hat = rejects.mean()
+                se95 = 1.96 * sqrt(max(p_hat * (1.0 - p_hat), 0.0) / N)
 
-    # LaTeX table with mean ± SE
-    df_pm = df_mean.copy().astype(object)
-    for i in range(n_scen):
-        for j in range(n_meth):
-            if np.isnan(p_hat[i, j]):
-                df_pm.iat[i, j] = "--"
+                p_hat_mat[i, j] = p_hat
+                se95_mat[i, j] = se95
+
+    # Print numeric matrices (optional)
+    df_mean = pd.DataFrame(p_hat_mat, index=SCENARIOS, columns=METHODS)
+    df_se95 = pd.DataFrame(se95_mat, index=SCENARIOS, columns=METHODS)
+    print("Rejection rate (p̂):")
+    print(df_mean)
+    print("\n95% MC half-width (1.96·SE):")
+    print(df_se95)
+
+    # Build LaTeX table with "p̂ ± 1.96·SE"
+    df_latex = pd.DataFrame(index=SCENARIOS, columns=METHODS, dtype=str)
+    for i, scenario in enumerate(SCENARIOS):
+        for j, method in enumerate(METHODS):
+            if np.isnan(p_hat_mat[i, j]):
+                df_latex.loc[scenario, method] = ""
             else:
-                df_pm.iat[i, j] = f"${p_hat[i, j]:.2f}\\,\\pm\\,{se[i, j]:.2f}$"
+                df_latex.loc[scenario, method] = (
+                    f"${p_hat_mat[i, j]:.2f}\\,\\pm\\,{se95_mat[i, j]:.2f}$"
+                )
 
-    latex_path = os.path.join(RESULT_ROOT, "rejection_table_mean_se.tex")
+    print("\nTable (p̂ ± 1.96·SE):")
+    print(df_latex)
+
+    latex_path = os.path.join(RESULT_ROOT, "rejection_table.tex")
     with open(latex_path, "w") as f:
-        f.write(df_pm.T.to_latex(escape=False))
+        f.write(df_latex.T.to_latex(escape=False))
     print(f"LaTeX table saved to {latex_path}")
 
 
