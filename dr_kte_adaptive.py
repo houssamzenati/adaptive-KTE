@@ -6,6 +6,7 @@ import scipy.stats as st
 import numpy as np
 from sklearn.metrics import pairwise_kernels, pairwise_distances
 
+
 def make_psd(A: np.ndarray, eps: float = 1e-6) -> np.ndarray:
     """
     Ensure the matrix is positive semi-definite (PSD).
@@ -21,6 +22,7 @@ def make_psd(A: np.ndarray, eps: float = 1e-6) -> np.ndarray:
     """
     n = A.shape[0]
     return (A + A.T) / 2 + eps * np.eye(n)
+
 
 # ---------- splits
 def chronological_folds(N):
@@ -52,8 +54,12 @@ def _build_mu_R_Delta(KXX_fold, A_fold, lam):
     K_tc = KXX_fold[np.ix_(idx_treated, idx_control)]
     K_tt = KXX_fold[np.ix_(idx_treated, idx_treated)]
 
-    mu0 = np.linalg.solve(K_cc + m_control * lam * np.eye(m_control), np.hstack([K_cc, K_ct]))
-    mu1 = np.linalg.solve(K_tt + n_treated * lam * np.eye(n_treated), np.hstack([K_tc, K_tt]))
+    mu0 = np.linalg.solve(
+        K_cc + m_control * lam * np.eye(m_control), np.hstack([K_cc, K_ct])
+    )
+    mu1 = np.linalg.solve(
+        K_tt + n_treated * lam * np.eye(n_treated), np.hstack([K_tc, K_tt])
+    )
 
     mu_arm = np.zeros((n, n))
     mu_arm[idx_control, :][:, cols_perm] = mu0
@@ -166,15 +172,11 @@ def xMMD2_vsdr_fold_generic(
     M0 = Delta0 + np.diag(W0) @ R0
     M1 = Delta1 + np.diag(W1) @ R1
 
-    K01 = pairwise_kernels(Y0, Y1, metric='rbf', 
-                            **kwargs
-                            )
+    K01 = pairwise_kernels(Y0, Y1, metric="rbf", **kwargs)
     G0 = M0.T @ K01 @ M1
 
     omega0 = _fold_omegas(
-        KFF=make_psd(pairwise_kernels(Y0, Y0, metric='rbf', 
-                                        **kwargs
-                                        )),
+        KFF=make_psd(pairwise_kernels(Y0, Y0, metric="rbf", **kwargs)),
         R=R0,
         Delta=Delta0,
         A_fold=A0,
@@ -182,9 +184,7 @@ def xMMD2_vsdr_fold_generic(
         Pi_fold_on_fold=Pi_0_on_0,
     )
     omega1 = _fold_omegas(
-        KFF=make_psd(pairwise_kernels(Y1, Y1, metric='rbf', 
-                                        **kwargs
-                                        )),
+        KFF=make_psd(pairwise_kernels(Y1, Y1, metric="rbf", **kwargs)),
         R=R1,
         Delta=Delta1,
         A_fold=A1,
