@@ -2,10 +2,6 @@ import numpy as np
 from sklearn.metrics import pairwise_kernels, pairwise_distances
 import scipy.stats as st
 
-
-import numpy as np
-from sklearn.metrics import pairwise_kernels, pairwise_distances
-
 def make_psd(A: np.ndarray, eps: float = 1e-6) -> np.ndarray:
     """
     Ensure the matrix is positive semi-definite (PSD).
@@ -154,8 +150,8 @@ def xMMD2_vsdr_fold_generic(
     gamma = np.median(pairwise_distances(X1, X1, metric="euclidean")) ** 2
     lam = gamma if lam is None else lam
 
-    KX0 = pairwise_kernels(X0, X0, metric="rbf", gamma=1.0 / gamma)
-    KX1 = pairwise_kernels(X1, X1, metric="rbf", gamma=1.0 / gamma)
+    KX0 = pairwise_kernels(X0, X0, metric=kernel_function, gamma=1.0 / gamma)
+    KX1 = pairwise_kernels(X1, X1, metric=kernel_function, gamma=1.0 / gamma)
 
     R0, Delta0 = _build_mu_R_Delta(make_psd(KX0), A0, lam)
     R1, Delta1 = _build_mu_R_Delta(make_psd(KX1), A1, lam)
@@ -166,15 +162,20 @@ def xMMD2_vsdr_fold_generic(
     M0 = Delta0 + np.diag(W0) @ R0
     M1 = Delta1 + np.diag(W1) @ R1
 
-    K01 = pairwise_kernels(Y0, Y1, metric='rbf', 
+    K_YY = make_psd(pairwise_kernels(Y, Y, metric=kernel_function, 
                             **kwargs
-                            )
+                            ))
+    # K01 = pairwise_kernels(Y0, Y1, metric=kernel_function, 
+    #                         **kwargs
+    #                         )
+    K01 = K_YY[np.ix_(idx0, idx1)]
     G0 = M0.T @ K01 @ M1
 
     omega0 = _fold_omegas(
-        KFF=make_psd(pairwise_kernels(Y0, Y0, metric='rbf', 
-                                        **kwargs
-                                        )),
+        # KFF=make_psd(pairwise_kernels(Y0, Y0, metric=kernel_function, 
+        #                                 **kwargs
+        #                                 )),
+        KFF = K_YY[np.ix_(idx0, idx0)],
         R=R0,
         Delta=Delta0,
         A_fold=A0,
@@ -182,9 +183,10 @@ def xMMD2_vsdr_fold_generic(
         Pi_fold_on_fold=Pi_0_on_0,
     )
     omega1 = _fold_omegas(
-        KFF=make_psd(pairwise_kernels(Y1, Y1, metric='rbf', 
-                                        **kwargs
-                                        )),
+        # KFF=make_psd(pairwise_kernels(Y1, Y1, metric=kernel_function, 
+        #                                 **kwargs
+        #                                 )),
+        KFF = K_YY[np.ix_(idx1, idx1)],
         R=R1,
         Delta=Delta1,
         A_fold=A1,
