@@ -62,6 +62,9 @@ Thumbs.db
 data*/
 plots/
 plots*/
+results*/
+*.lock
+*logs
 
 # The oddly-named folder: data['adaptive']
 # (escape the brackets so Git matches literally)
@@ -93,3 +96,4 @@ MANIFEST
 BariscanDebug/
 BariscanDebug*/
 *Copy*.ipynb
+dsprite_debug*
