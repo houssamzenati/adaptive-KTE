@@ -61,6 +61,7 @@ Thumbs.db
 # Any data folders used in experiments
 data*/
 plots/
+plots*/
 
 # The oddly-named folder: data['adaptive']
 # (escape the brackets so Git matches literally)
