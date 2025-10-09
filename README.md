@@ -33,9 +33,8 @@
         * Create the parameter file: ```python experiments_dsprite.py --get_parameters_experiment```
 
         * Run python script for each parameter (bash file is recommended): ```python experiments_dsprite.py --run --scenario "$SCENARIO" --method "$METHOD" --seed "$SEED"```
-        
+
         * python experiments_dsprite.py --results: ```python experiments_dsprite.py --results```
-        ```python experiments_dsprite.py```
 
     * To reproduce Figure 6 and 7:
 
