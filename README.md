@@ -44,3 +44,4 @@
 
         ```python experiment_adaptive-sigmoidal-structural-func.py```
 
+This branch contains some files that are deprecated. Will be cleaned in the future.
