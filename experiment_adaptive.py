@@ -302,7 +302,6 @@ b_list = ['I']
 method_list = ['VS-DR-KTE']
 # method_list = ['VS-DR-KTE', 'DR-xKTE', 'IPW-xKTE']
 
-
 experiment = 'adaptive'
 name_folder = 'results/' +str(experiment) + '/'
 run_tests_adaptive(b_list, method_list, ns_list, name_folder, num_experiments, iterations, split="alternating")
