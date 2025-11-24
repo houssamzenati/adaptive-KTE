@@ -61,6 +61,10 @@ Thumbs.db
 # Any data folders used in experiments
 data*/
 plots/
+plots*/
+results*/
+*.lock
+*logs
 
 # The oddly-named folder: data['adaptive']
 # (escape the brackets so Git matches literally)
@@ -88,7 +92,8 @@ wheels/
 MANIFEST
 
 
-*.sh
+# *.sh
 BariscanDebug/
 BariscanDebug*/
 *Copy*.ipynb
+dsprite_debug*

@@ -1,4 +1,3 @@
-# %%
 import numpy as np
 import scipy
 import matplotlib.pyplot as plt
@@ -21,12 +20,11 @@ import statistics
 
 from tqdm import tqdm
 
-import seaborn as sns
 import pandas as pd
 import time
 import os
-# %%
-def treatment_effect_vector(ns, scenario, rng, beta_mix=1.0, beta_uniform=2.0):
+
+def treatment_effect_vector(ns, scenario, rng, beta_mix=2.0, beta_uniform=4.0):
     """
     Per-time treatment effect δ[t]; Y1 = base + δ, Y0 = base.
     scenario ∈ {'I','II','III','IV'}.
@@ -34,7 +32,7 @@ def treatment_effect_vector(ns, scenario, rng, beta_mix=1.0, beta_uniform=2.0):
     if scenario == 'I':
         return np.zeros(ns)
     if scenario == 'II':
-        return np.full(ns, 1)
+        return np.full(ns, 2)
     if scenario == 'III':
         signs = rng.binomial(1, 0.5, size=ns) * 2 - 1
         return signs.astype(float) * beta_mix
@@ -55,7 +53,7 @@ def collect_epsilon_greedy(
 
     # contexts and potential outcomes (linear base)
     X = rng.randn(ns, d)
-    base = X @ beta_vec
+    base = np.cos(X @ beta_vec)
     delta = treatment_effect_vector(ns, scenario, rng)
     Y0 = base + noise_var * rng.randn(ns)
     Y1 = base + noise_var * rng.randn(ns) + delta
@@ -152,11 +150,6 @@ def collect_epsilon_greedy(
         P_all[t] = np.where(q1_all > q0_all, 1.0 - 0.5 * eps_t,
                      np.where(q1_all < q0_all, 0.5 * eps_t, 0.5))
     return X, T, Y[:, None], w, Pi_fold0_on_0, Pi_fold1_on_1, idx0, idx1, P_all
-# %%
-import os, time
-import numpy as np
-import pandas as pd
-from sklearn.metrics import pairwise_distances
 
 def run_tests_adaptive(
     b_list, method_list, ns_list,
@@ -178,7 +171,7 @@ def run_tests_adaptive(
     for b in b_list:
         print('b = ', b)
         for method in method_list:
-            for ns in ns_list:
+            for ns in tqdm(ns_list):
                 p_values = np.zeros(num_experiments)
                 values   = np.zeros(num_experiments)
                 times    = np.zeros(num_experiments)
@@ -187,10 +180,9 @@ def run_tests_adaptive(
                     # ----- data + fold-aligned policy matrices for the requested split
                     X, T, Y, w, Pi_0_on_0, Pi_1_on_1, idx0, idx1, P_all = collect_epsilon_greedy(
                         ns=ns, d=d, beta_vec=beta_vec, noise_var=noise_var, scenario=b,
-                        eps0=0.5, eps_min=0.2, power=0.5, lam=1e-2, rng=rng,
+                        eps0=0.5, eps_min=0.2, power=0.5, lam=1e-4, rng=rng,
                         split=split, one_indexed=one_indexed
                     )
-
                     # Ensure shapes (N,1)
                     if Y.ndim == 1:
                         Y = Y[:, None]
@@ -198,7 +190,7 @@ def run_tests_adaptive(
                     # Gaussian RBF kernel bandwidth on Y blocks
                     YY0 = Y[T == 0]
                     YY1 = Y[T == 1]
-                    sigma2 = np.median(pairwise_distances(YY0, YY1, metric='euclidean'))**2
+                    sigma2 = np.median(pairwise_distances(YY0, YY1, metric='euclidean'))**2 / 4
                     if not np.isfinite(sigma2) or sigma2 <= 0:
                         sigma2 = float(np.var(Y)) + 1e-6
 
@@ -208,13 +200,18 @@ def run_tests_adaptive(
                     t0 = time.time()
                     if method == 'VS-DR-KTE':
                         # Always-stabilized, adaptive-aware, with chosen split
-                        value = vs_dr_kte_crossfitted(
-                            Y=Y, X=X, A=T, p_logged=w,
-                            Pi_0_on_0=Pi_0_on_0,    # shape (N0, N0): Pi_0_on_0[t, s] = π_t(1|X_s) within fold 0
-                            Pi_1_on_1=Pi_1_on_1,    # shape (N1, N1): Pi_1_on_1[t, s] = π_t(1|X_s) within fold 1
-                            y_kernel='rbf',
-                            split=split',
-                            gamma=1.0 / sigma2      # outcome-kernel parameter
+                        value = xMMD2_vsdr_fold_generic(
+                            Y=Y, w=w, X=X, A=T,
+                            kernel_function='rbf',
+                            # fold-wise evaluation policies (chrono×chrono) for the two folds
+                            Pi_0_on_0=Pi_0_on_0,
+                            Pi_1_on_1=Pi_1_on_1,
+                            # fold indices (0-based, chronological within each)
+                            idx0=idx0,
+                            idx1=idx1,
+                            # outcome-kernel parameter (same as before)
+                            gamma=1.0/sigma2,
+                            lam=1e-2,
                         )
                         from math import erf, sqrt
                         p_value = 0.5 * (1.0 - erf(value / np.sqrt(2.0)))
@@ -245,9 +242,6 @@ def run_tests_adaptive(
                         )
                         value  = out['stat']     # z-like
                         from math import erf, sqrt
-                        # Phi = lambda z: 0.5*(1.0 + erf(z/np.sqrt(2.0)))
-                        # p_two_sided = 2.0*(1.0 - Phi(abs(value)))
-                        # p_value=p_two_sided
                         p_value = 0.5 * (1.0 - erf(value / np.sqrt(2.0)))
 
                     elif method == 'Hadad':
@@ -272,10 +266,6 @@ def run_tests_adaptive(
                         value  = out['stat']
                         from math import erf, sqrt
                         p_value = 0.5 * (1.0 - erf(value / np.sqrt(2.0)))
-                        # Phi = lambda z: 0.5*(1.0 + erf(z/np.sqrt(2.0)))
-                        # p_two_sided = 2.0*(1.0 - Phi(abs(value)))
-                        # p_value=p_two_sided
-
 
                     else:
                         raise ValueError('Method not recognized.')
@@ -293,25 +283,26 @@ def run_tests_adaptive(
                     name_folder, f'ns{ns}b{b}{method}_{split}.csv'
                 ), index=False)
 
-# %%
-num_experiments=100
+num_experiments=200
 iterations=100
 
-ns_list = np.arange(100, 150, 50)
+ns_list = np.arange(100, 1050, 50)
 b_list = ['I']
 method_list = ['VS-DR-KTE']
 # method_list = ['VS-DR-KTE', 'DR-xKTE', 'IPW-xKTE']
 
-experiment = 'adaptive'
+
+experiment = 'adaptive_cosine'
 name_folder = 'results/' +str(experiment) + '/'
 run_tests_adaptive(b_list, method_list, ns_list, name_folder, num_experiments, iterations, split="alternating")
-# %%
+
 # Scenario I adaptive setting
-name_folder_list_adaptive_null = ['results/' + 'adaptive' + '/']
+name_folder_list_adaptive_null = ['results/' + 'adaptive_cosine' + '/']
 ns_list_false_null = ns_list
 ns_array_false_null = np.array(ns_list_false_null)
 b_list_false_null = ['I']
-methods_false_null = ['VS-DR-KTE_chronological']
+methods_false_null = ['VS-DR-KTE_alternating']
+# methods_false_null = ['VS-DR-KTE_chronological']
 case_list_false_null = [1]
 
 d = dict()
@@ -323,13 +314,11 @@ for name_folder in name_folder_list_adaptive_null:
                 for ns in ns_array_false_null:
                     name = name_folder + 'ns' + str(ns) + 'b' + str(b) + method + '.csv'
                     d[name] = pd.read_csv(name, index_col = 0)
-# %%
+                    
+
 store_results = 'plots'
 os.makedirs(store_results, exist_ok=True)
-# %%
-import os
-import numpy as np
-import matplotlib.pyplot as plt
+
 from scipy.stats import norm, probplot, gaussian_kde
 
 # --- Styling (mimics your "sns-like" setup) ---
@@ -356,14 +345,15 @@ method_colors = {
 }
 m_dict = {0: "^", 1: "s", 2: "v", 3: "o", 4: "D"}
 m_dict_title = {0: " Adaptive setting", 1: " Observational setting", 2:"Adaptive Setting"}
-method_dict = {'VS-DR-KTE': 'VS-DR-KTE-a', 'VS-DR-KTE_chronological': 'VS-DR-KTE-c', 'DR-xKTE': 'AIPW-xKTE', 'IPW-xKTE': 'IPW-xKTE', 'KTE': 'KTE'}
+method_dict = {'VS-DR-KTE_alternating': 'VS-DR-KTE-a', 'VS-DR-KTE_chronological': 'VS-DR-KTE-c', 'DR-xKTE': 'AIPW-xKTE', 'IPW-xKTE': 'IPW-xKTE', 'KTE': 'KTE'}
 
 # --- Inputs matching your original snippet ---
 case = 1
 b = 'I'
-ns = 300
-method = 'VS-DR-KTE_chronological'
-experiment = 'adaptive'
+ns = 1000
+method = 'VS-DR-KTE_alternating'
+# method = 'VS-DR-KTE_chronological'
+experiment = 'adaptive_cosine'
 name_folder = f"results/{experiment}/"
 os.makedirs("plots", exist_ok=True)
 
@@ -394,7 +384,7 @@ plt.plot(x_axis, norm.pdf(x_axis), linewidth=2, color=cb_colors["pdf"], label="S
 plt.xlabel(method_dict[method])
 plt.ylabel("Density")
 plt.title("(A)")
-plt.legend(loc="upper left")
+plt.legend(loc="best")
 
 # ============================== (B) QQ-PLOT ==============================
 plt.subplot(1, 3, 2)
@@ -408,7 +398,9 @@ plt.ylabel("Ordered values")
 # ===== (C) FALSE POSITIVE RATE (multi-method) WITH ERROR BARS =====
 plt.subplot(1, 3, 3)
 confidence_level = 0.05
-method_list = ['VS-DR-KTE_chronological']
+method_list = ['VS-DR-KTE_alternating']
+# method_list = ['VS-DR-KTE_chronological']
+
 name_folder_list = [f"results/{experiment}/"]
 ns_array = np.array(ns_list)
 
@@ -444,7 +436,132 @@ plt.ylabel("False positive rate")
 plt.legend(loc="upper right")
 
 plt.tight_layout()
-plt.savefig(f"plots/REVIEWED_null_dr_adaptive{case}_errorbar.png", bbox_inches='tight')
+plt.savefig(f"plots/REVIEWED_null_dr_adaptive_cosine_{case}_errorbar.png", bbox_inches='tight')
 plt.show()
 
-# %%
+num_experiments=200
+iterations=100
+
+ns_list = np.arange(100, 450, 50)
+b_list = ['II', 'III', 'IV']
+method_list = ['VS-DR-KTE', 'CADR', 'Hadad']
+# method_list = ['VS-DR-KTE']
+
+
+experiment = 'adaptive_cosine'
+name_folder = 'results/' +str(experiment) + '/'
+run_tests_adaptive(b_list, method_list, ns_list, name_folder, num_experiments, iterations, split="alternating")
+
+# Scenario I adaptive setting
+name_folder_list_adaptive_null = ['results/' + 'adaptive_cosine' + '/']
+ns_list_false_null = ns_list
+ns_array_false_null = np.array(ns_list_false_null)
+b_list_false_null = ['II', 'III', 'IV']
+methods_false_null = ['VS-DR-KTE', 'CADR', 'Hadad']
+case_list_false_null = [1]
+
+d = dict()
+
+for name_folder in name_folder_list_adaptive_null:
+    for b in b_list_false_null:
+        for method in methods_false_null:
+            for case in case_list_false_null:
+                for ns in ns_array_false_null:
+                    name = name_folder + 'ns' + str(ns) + 'b' + str(b) + method + '_alternating.csv'
+                    d[name] = pd.read_csv(name, index_col = 0)
+
+def plot_power_scenarios_adaptive_alternative(
+    d,
+    scenario_list=["II", "III", "IV"],
+    ns_list=[100, 150, 200, 250, 300, 350, 400],
+    methods=['VS-DR-KTE', 'CADR', 'Hadad'],
+    name_folder="results/adaptive_cosine/",
+    split_suffix="_alternating.csv",
+    alpha=0.05,
+    save_path="plots/adaptive_alternative_power.png"
+):
+    # === Styling ===
+    plt.rcParams["figure.figsize"] = (16, 4)
+    plt.rc("legend", fontsize=12)
+    plt.rc("axes", labelsize=15)
+    plt.rc("xtick", labelsize=15)
+    plt.rc("ytick", labelsize=15)
+    plt.rcParams["axes.grid"] = True
+
+    fig, axs = plt.subplots(1, 3, constrained_layout=True)
+
+    # === Mappings ===
+    method_label = {
+        "VS-DR-KTE": "VS-DR-KTE (Ours)",
+        "CADR": "CADR",
+        "Hadad": "AW-AIPW",
+    }
+    colors = {
+        "VS-DR-KTE": "#009E73",
+        "CADR": "#0072B2",
+        "Hadad": "#E69F00",
+    }
+    markers = {0: "^", 1: "s", 2: "o", 3: "v", 4: "D"}
+    scenario_titles = {"II": "(II)", "III": "(III)", "IV": "(IV)"}
+    ns_array = np.array(ns_list)
+
+    for col, scenario in enumerate(scenario_list):
+        ax = axs[col]
+        ax.set_title(scenario_titles.get(scenario, scenario))
+        ax.set_ylim((-0.05, 1.05))
+        ax.set_xlabel("Sample size")
+        ax.set_xticks(ns_list)
+        ax.grid(True, linestyle="--", alpha=0.6)
+        if col == 0:
+            ax.set_ylabel("Power (true positive rate)")
+
+        for i, method in enumerate(methods):
+            power_values = []
+            n_per_point = []
+            for ns in ns_list:
+                fname = f"{name_folder}ns{ns}b{scenario}{method}{split_suffix}"
+                pvals = d[fname]["p_values"]
+                rej = (pvals < alpha).mean()
+                power_values.append(rej)
+                n_per_point.append(len(pvals))
+
+            power_values = np.array(power_values)
+            n_per_point = np.array(n_per_point)
+            # Binomial SE for proportion, Wald 95% band (you can swap for Wilson if you prefer)
+            varhat = power_values * (1 - power_values) / np.maximum(n_per_point, 1)
+            yerr = 1.96 * np.sqrt(varhat)
+
+            ax.errorbar(
+                x=ns_array,
+                y=power_values,
+                yerr=yerr,
+                capsize=4,
+                marker=markers[i % len(markers)],
+                linestyle='--',
+                linewidth=1.5,
+                markersize=8,
+                label=method_label[method],
+                color=colors[method]
+            )
+
+        # Reference lines: nominal alpha (for orientation) and 80% power target
+        # ax.axhline(alpha, color="black", linestyle=":", linewidth=1, label="α")
+        ax.axhline(0.8, color="#888888", linestyle=":", linewidth=1)
+
+        ax.legend(loc="best")
+
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    plt.savefig(save_path, bbox_inches="tight")
+    plt.show()
+
+plot_power_scenarios_adaptive_alternative(
+    d=d,
+    scenario_list=['II','III','IV'],
+    ns_list=ns_list,
+    methods=['VS-DR-KTE', 'CADR', 'Hadad'],
+    name_folder='results/adaptive_cosine/',
+    split_suffix='_alternating.csv',
+    alpha=0.05,
+    save_path='plots/scenarios_II_III_IV_adaptive_cosine_power.png'
+)
+
