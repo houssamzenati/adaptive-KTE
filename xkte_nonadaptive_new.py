@@ -48,23 +48,23 @@ def xMMD2dr(XY, w, Xcov, T, kernel_function, **kwargs):
         np.median(pairwise_distances(X[N2:, :], X[N2:, :], metric="euclidean")) ** 2
     )
     KX = pairwise_kernels(X, metric="rbf", gamma=1.0 / sigmaKX)
-    gamma = sigmaKX
+    gamma = 1e-1
 
-    mu0a = np.linalg.solve(KX[:m1, :m1] + gamma * np.eye(m1), KX[:m1, : m1 + n1])
+    mu0a = np.linalg.solve(KX[:m1, :m1] + m1 * gamma * np.eye(m1), KX[:m1, : m1 + n1])
     zeroed_mu0a = np.vstack((mu0a, np.zeros((n1, m1 + n1))))
     mu1a = np.linalg.solve(
-        KX[m1 : m1 + n1, m1 : m1 + n1] + gamma * np.eye(n1), KX[m1 : m1 + n1, : m1 + n1]
+        KX[m1 : m1 + n1, m1 : m1 + n1] + n1 * gamma * np.eye(n1), KX[m1 : m1 + n1, : m1 + n1]
     )
     zeroed_mu1a = np.vstack((np.zeros((m1, m1 + n1)), mu1a))
     muAa = np.hstack((zeroed_mu0a[:, :m1], zeroed_mu1a[:, m1 : m1 + n1]))
 
     mu0b = np.linalg.solve(
-        KX[m1 + n1 : m + n1, m1 + n1 : m + n1] + gamma * np.eye(m - m1),
+        KX[m1 + n1 : m + n1, m1 + n1 : m + n1] + (m - m1) * gamma * np.eye(m - m1),
         KX[m1 + n1 : m + n1, m1 + n1 :],
     )
     zeroed_mu0b = np.vstack((mu0b, np.zeros((n - n1, m + n - m1 - n1))))
     mu1b = np.linalg.solve(
-        KX[m + n1 :, m + n1 :] + gamma * np.eye(n - n1), KX[m + n1 :, m1 + n1 :]
+        KX[m + n1 :, m + n1 :] + (n - n1) * gamma * np.eye(n - n1), KX[m + n1 :, m1 + n1 :]
     )
     zeroed_mu1b = np.vstack((np.zeros((m - m1, m + n - m1 - n1)), mu1b))
     muAb = np.hstack((zeroed_mu0b[:, : m - m1], zeroed_mu1b[:, m - m1 :]))
@@ -80,19 +80,36 @@ def xMMD2dr(XY, w, Xcov, T, kernel_function, **kwargs):
     return np.sqrt(len(U)) * U.mean() / U.std()
 
 
-def kernel_dr_two_sample_test_agnostic(
-    Y, Xcov, T, kernel_function="rbf", p=0.5, verbose=False, random_state=None, **kwargs
-):
-    """Compute the statistic AIPW-xKTE and its p-value given normal distribution."""
-    w = LogisticRegression(C=1e6, max_iter=1000).fit(Xcov, T).predict_proba(Xcov)[:, 1]
-    xmmd2dr = xMMD2dr(Y, w, Xcov, T, kernel_function, **kwargs)
-    if verbose:
-        print("DR xMMD^2 = %s" % xmmd2dr)
-    p_value = 1 - st.norm.cdf(xmmd2dr)
-    return xmmd2dr, p_value
+# def kernel_dr_two_sample_test_agnostic(
+#     Y, Xcov, T, kernel_function="rbf", p=0.5, verbose=False, random_state=None, **kwargs
+# ):
+#     """Compute the statistic AIPW-xKTE and its p-value given normal distribution."""
+#     w = LogisticRegression(C=1e6, max_iter=1000).fit(Xcov, T).predict_proba(Xcov)[:, 1]
+#     xmmd2dr = xMMD2dr(Y, w, Xcov, T, kernel_function, **kwargs)
+#     if verbose:
+#         print("DR xMMD^2 = %s" % xmmd2dr)
+#     p_value = 1 - st.norm.cdf(xmmd2dr)
+#     return xmmd2dr, p_value
 
-def kernel_dr_two_sample_test_with_w(
-    Y, Xcov, T, w, kernel_function="rbf", p=0.5, verbose=False, random_state=None, **kwargs
+# def kernel_dr_two_sample_test_with_w(
+#     Y, Xcov, T, w, kernel_function="rbf", p=0.5, verbose=False, random_state=None, **kwargs
+# ):
+#     """Compute the statistic AIPW-xKTE and its p-value given normal distribution."""
+#     xmmd2dr = xMMD2dr(Y, w, Xcov, T, kernel_function, **kwargs)
+#     if verbose:
+#         print("DR xMMD^2 = %s" % xmmd2dr)
+#     p_value = 1 - st.norm.cdf(xmmd2dr)
+#     return xmmd2dr, p_value
+def kernel_dr_two_sample_test_agnostic(
+    Y,
+    Xcov,
+    T,
+    w,
+    kernel_function="rbf",
+    p=0.5,
+    verbose=False,
+    random_state=None,
+    **kwargs
 ):
     """Compute the statistic AIPW-xKTE and its p-value given normal distribution."""
     xmmd2dr = xMMD2dr(Y, w, Xcov, T, kernel_function, **kwargs)
