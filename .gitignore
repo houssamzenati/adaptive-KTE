@@ -60,7 +60,7 @@ Thumbs.db
 # ----------------------------
 # Any data folders used in experiments
 data*/
-plots/
+# plots/
 plots*/
 results*/
 *.lock
