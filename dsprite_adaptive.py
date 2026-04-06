@@ -324,7 +324,6 @@ def plot_observational_samples(scenario="IV", n_per_arm=6, seed=0):
 
     fig.suptitle(f"Observational samples • Scenario {scenario} (roll renderer)", y=0.98)
     plt.tight_layout()
-    plt.savefig('observational_dsprite.png')
     plt.show()
 
 
@@ -350,7 +349,6 @@ def plot_counterfactual_pairs(scenario="IV", n=6, seed=1):
         axes[1, j].axis("off")
     fig.suptitle(f"Counterfactual pairs • Scenario {scenario} (roll renderer)", y=0.98)
     plt.tight_layout()
-    plt.savefig('counterfactual_pairs_dsprite.png')
     plt.show()
 
     # mean invariance printout
@@ -383,9 +381,10 @@ def sanity_check_mean_invariance(scenario="IV", n=2000, seed=0):
     print("[Mean invariance check]", out)
     return out
 
-plot_observational_samples(scenario="IV", n_per_arm=6, seed=0)
-plot_counterfactual_pairs(scenario="IV", n=6, seed=1)
-sanity_check_mean_invariance(scenario="IV", n=5000, seed=3)
+
+# plot_observational_samples(scenario="IV", n_per_arm=6, seed=0)
+# plot_counterfactual_pairs(scenario="IV", n=6, seed=1)
+# sanity_check_mean_invariance(scenario="IV", n=5000, seed=3)
 
 # %%
 
