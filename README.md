@@ -1,8 +1,19 @@
 # adaptive-KTE
 
-Code for the post-rebuttal version of **Kernel Treatment Effects with Adaptively Collected Data**.
+This is the code for our [paper on Kernel Treatment Effects with Adaptively Collected Data.](https://arxiv.org/pdf/2510.10245)
 
-This branch is centered on the corrected projected adaptive test, **ADR-KTE**. The older trace-normalized `VS-DR-KTE` implementation has been removed to avoid confusing it with the updated estimator.
+Please cite our work if you find it useful for your research and work:
+```
+@misc{zenati2026kerneltreatmenteffectsadaptively,
+      title={Kernel Treatment Effects with Adaptively Collected Data}, 
+      author={Houssam Zenati and Bariscan Bozkurt and Arthur Gretton},
+      year={2026},
+      eprint={2510.10245},
+      archivePrefix={arXiv},
+      primaryClass={stat.ML},
+      url={https://arxiv.org/abs/2510.10245}, 
+}
+```
 
 ## Canonical Files
 
@@ -23,7 +34,7 @@ This branch is centered on the corrected projected adaptive test, **ADR-KTE**. T
 - `scripts/run_failure_example_dr_xkte.py`: failure figure for the naive adaptive DR-xKTE statistic.
 - `scripts/plot_dsprite_examples.py`: dSprite observational and counterfactual example images.
 
-The notebooks above are the historical post-rebuttal drivers for the current manuscript results. They use the updated projected estimator and the alternating split described in the experimental appendix.
+The notebooks above use the adaptive estimator and the alternating split described in the experimental appendix.
 
 ## Environment
 
