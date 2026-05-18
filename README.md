@@ -4,14 +4,11 @@ This is the code for our [paper on Kernel Treatment Effects with Adaptively Coll
 
 Please cite our work if you find it useful for your research and work:
 ```
-@misc{zenati2026kerneltreatmenteffectsadaptively,
-      title={Kernel Treatment Effects with Adaptively Collected Data}, 
-      author={Houssam Zenati and Bariscan Bozkurt and Arthur Gretton},
-      year={2026},
-      eprint={2510.10245},
-      archivePrefix={arXiv},
-      primaryClass={stat.ML},
-      url={https://arxiv.org/abs/2510.10245}, 
+@article{zenati2025kernel,
+  title={Kernel Treatment Effects with Adaptively Collected Data},
+  author={Zenati, Houssam and Bozkurt, Bariscan and Gretton, Arthur},
+  journal={arXiv preprint arXiv:2510.10245},
+  year={2025}
 }
 ```
 
