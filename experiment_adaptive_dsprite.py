@@ -1,4 +1,3 @@
-# experiments_dsprite.py
 import os, time, argparse
 import numpy as np
 import pandas as pd
@@ -8,9 +7,7 @@ from scipy.stats import norm
 
 # === project imports ===
 from dsprite_adaptive import collect_adaptive_kte_dsprite
-from dr_kte_adaptive import xMMD2_vsdr_fold_generic
 from projected_adaptive_kte import projected_adaptive_kte_test
-from xkte_nonadaptive import xMMD2dr
 from baselines import cadr_test, hadad_test, fit_krr_predict
 
 # -----------------------
@@ -22,7 +19,7 @@ PARAM_ROOT = "experiment_parameters"
 
 NB_SEEDS = 200
 SCENARIOS = ["I", "IV"]
-METHODS = ["VS-DR-KTE", "CADR", "AW-AIPW"]  # Hadad shown as AW-AIPW
+METHODS = ["ADR-KTE", "CADR", "AW-AIPW"]
 
 os.makedirs(RESULT_ROOT, exist_ok=True)
 os.makedirs(PARAM_ROOT, exist_ok=True)
@@ -60,7 +57,7 @@ def run_single_experiment(scenario_id, method, seed):
     """
     Runs one replicate for a given scenario/method.
     CADR / AW-AIPW use the scalar proxy = mean pixel of the image.
-    DR-KTE / VS-DR-KTE operate on the full images.
+    ADR-KTE operates on the full images.
     """
     ns = 1000
     d = 2
@@ -128,22 +125,7 @@ def run_single_experiment(scenario_id, method, seed):
     pval = np.nan
     try:
         t0 = time.time()
-        if method == "VS-DR-KTE":
-            # variance-stabilized, adaptive-aware DR-KTE on images
-            # stat = xMMD2_vsdr_fold_generic(
-            #     Y=Y2d,
-            #     w=w1,
-            #     X=X,
-            #     A=T,
-            #     kernel_function="rbf",
-            #     Pi_0_on_0=Pi_0_on_0,
-            #     Pi_1_on_1=Pi_1_on_1,
-            #     idx0=idx0,
-            #     idx1=idx1,
-            #     gamma=gamma_k,
-            #     lam=1e-2,
-            # )
-            # pval = norm.sf(stat)
+        if method == "ADR-KTE":
             out = projected_adaptive_kte_test(
                 Y=Y2d,
                 X=X,
@@ -318,7 +300,7 @@ if __name__ == "__main__":
     parser.add_argument("--results", action="store_true")
 
     parser.add_argument("--scenario", type=str, choices=SCENARIOS, default="I")
-    parser.add_argument("--method", type=str, choices=METHODS, default="DR-KTE")
+    parser.add_argument("--method", type=str, choices=METHODS, default="ADR-KTE")
     parser.add_argument("--seed", type=int, default=0)
 
     args = parser.parse_args()

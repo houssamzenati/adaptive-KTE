@@ -60,6 +60,10 @@ Thumbs.db
 # ----------------------------
 # Any data folders used in experiments
 data*/
+!data/
+!data/dsprite_mat.npy
+!data/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz
+!data/ihdp.csv
 # plots/
 plots*/
 results*/
@@ -72,6 +76,7 @@ data\['adaptive'\]/
 
 # Common result artifacts
 *.csv
+!data/ihdp.csv
 *.tsv
 *.parquet
 *.feather

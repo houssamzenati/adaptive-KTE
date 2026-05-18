@@ -1,4 +1,3 @@
-# %%
 import numpy as np
 from filelock import FileLock
 import pathlib
@@ -10,7 +9,7 @@ DATA_PATH = pathlib.Path(__file__).resolve().parent.joinpath("data")
 
 
 def _load_dsprite():
-    with FileLock("./data.lock"):
+    with FileLock(str(DATA_PATH.joinpath("data.lock"))):
         z = np.load(
             DATA_PATH.joinpath("dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz"),
             allow_pickle=True,
@@ -76,7 +75,6 @@ def _render_image(U, A, imgs, latents_bases, shift=(0.0, 0.0), mode="shift"):
     return imgs[ids].astype(np.float32)  # (n,64,64)
 
 
-# --- add below your existing imports ---
 def _get_base_heart(imgs, latents_bases, px=16, py=16):
     # one canonical heart; same shape/scale/orientation, central-ish location
     idx = _image_id(latents_bases, np.array([px]), np.array([py]))[0]
@@ -285,12 +283,7 @@ def collect_adaptive_kte_dsprite(
     Y2d = Y_img.reshape(ns, -1)  # (ns,4096)
     return X, T, Y2d, w, Pi_0_on_0, Pi_1_on_1, idx0, idx1, P_all
 
-
-# %%
-# # %%
 # --- plotting & sanity checks that match the roll-based renderer ---
-
-import matplotlib.pyplot as plt
 
 
 def _base_heart():
@@ -301,6 +294,8 @@ def _base_heart():
 
 
 def plot_observational_samples(scenario="IV", n_per_arm=6, seed=0):
+    import matplotlib.pyplot as plt
+
     # Uses the collector, which already renders with _render_image_roll_quadrant
     X, T, Y2d, w, *_ = collect_adaptive_kte_dsprite(
         ns=200, d=2, scenario=scenario, rng=np.random.RandomState(seed)
@@ -324,11 +319,14 @@ def plot_observational_samples(scenario="IV", n_per_arm=6, seed=0):
 
     fig.suptitle(f"Observational samples • Scenario {scenario} (roll renderer)", y=0.98)
     plt.tight_layout()
-    plt.savefig('observational_dsprite.png')
+    pathlib.Path("figures").mkdir(exist_ok=True)
+    plt.savefig("figures/observational_dsprite.png", dpi=300, bbox_inches="tight")
     plt.show()
 
 
 def plot_counterfactual_pairs(scenario="IV", n=6, seed=1):
+    import matplotlib.pyplot as plt
+
     # Render A=0 and A=1 for the same contexts with the roll renderer
     rng = np.random.RandomState(seed)
     X, *_ = collect_adaptive_kte_dsprite(
@@ -350,7 +348,8 @@ def plot_counterfactual_pairs(scenario="IV", n=6, seed=1):
         axes[1, j].axis("off")
     fig.suptitle(f"Counterfactual pairs • Scenario {scenario} (roll renderer)", y=0.98)
     plt.tight_layout()
-    plt.savefig('counterfactual_pairs_dsprite.png')
+    pathlib.Path("figures").mkdir(exist_ok=True)
+    plt.savefig("figures/counterfactual_pairs_dsprite.png", dpi=300, bbox_inches="tight")
     plt.show()
 
     # mean invariance printout
@@ -383,78 +382,7 @@ def sanity_check_mean_invariance(scenario="IV", n=2000, seed=0):
     print("[Mean invariance check]", out)
     return out
 
-plot_observational_samples(scenario="IV", n_per_arm=6, seed=0)
-plot_counterfactual_pairs(scenario="IV", n=6, seed=1)
-sanity_check_mean_invariance(scenario="IV", n=5000, seed=3)
-
-# %%
-
-
-# def _mean_pixel(batch):
-#     # batch: (n,64,64) -> (n,)
-#     return batch.mean(axis=(1, 2))
-
-# def sanity_check_counterfactual_mean_invariance(scenario="IV", n=2000, shift_pixels=8, seed=0, atol=1e-8):
-#     """
-#     Renderer-level check: for the same U, compare mean pixels for A=0 vs A=1.
-#     Should be ~0 difference in both scenarios.
-#     """
-#     imgs, latents_bases = _load_dsprite()
-#     rng = np.random.RandomState(seed)
-#     U = rng.uniform(0.0, 1.0, size=(n, 2))
-
-#     px = float(shift_pixels) / 32.0
-#     shift = (0.0, 0.0) if scenario == "I" else (px, px)
-#     mode = "shift" if scenario == "I" else "quadrant"
-
-#     Y0 = _render_image(U, np.zeros(n, dtype=int), imgs, latents_bases, shift=shift, mode=mode)
-#     Y1 = _render_image(U, np.ones(n,  dtype=int), imgs, latents_bases, shift=shift, mode=mode)
-
-#     m0 = _mean_pixel(Y0)
-#     m1 = _mean_pixel(Y1)
-#     diff = m1 - m0
-
-#     out = {
-#         "scenario": scenario,
-#         "n": n,
-#         "mean_A0": float(m0.mean()),
-#         "mean_A1": float(m1.mean()),
-#         "mean_diff": float(diff.mean()),
-#         "max_abs_diff": float(np.max(np.abs(diff))),
-#         "allclose": bool(np.allclose(m0, m1, atol=atol))
-#     }
-#     print(f"[Counterfactual mean invariance] {out}")
-#     return out
-
-# def sanity_check_logged_mean_invariance(scenario="IV", ns=5000, shift_pixels=8, seed=1):
-#     """
-#     Collector-level check: run ε-greedy, compute E[mean(Y)|T=0] vs E[mean(Y)|T=1].
-#     Should be very close in both scenarios.
-#     """
-#     rng = np.random.RandomState(seed)
-#     X, T, Y2d, w, *_ = collect_adaptive_kte_dsprite(
-#         ns=ns, d=2, scenario=scenario, rng=rng, shift_pixels=shift_pixels
-#     )
-#     y_mean = Y2d.reshape(-1, 64, 64).mean(axis=(1, 2))
-#     m0 = float(y_mean[T == 0].mean()) if np.any(T == 0) else float("nan")
-#     m1 = float(y_mean[T == 1].mean()) if np.any(T == 1) else float("nan")
-#     out = {
-#         "scenario": scenario,
-#         "ns": ns,
-#         "E_mean_A0": m0,
-#         "E_mean_A1": m1,
-#         "diff": (m1 - m0) if np.isfinite(m0) and np.isfinite(m1) else float("nan"),
-#         "prop_T1": float(T.mean()),
-#     }
-#     print(f"[Logged mean invariance] {out}")
-#     return out
-
-# # Renderer-level (counterfactual) — should report ~0 diffs
-# sanity_check_counterfactual_mean_invariance("I",  n=2000, shift_pixels=8)
-# sanity_check_counterfactual_mean_invariance("IV", n=2000, shift_pixels=8)
-
-# # Logged data (with the actual ε-greedy collector) — should also be ~0
-# sanity_check_logged_mean_invariance("I",  ns=5000, shift_pixels=8)
-# sanity_check_logged_mean_invariance("IV", ns=5000, shift_pixels=8)
-
-# %%
+if __name__ == "__main__":
+    plot_observational_samples(scenario="IV", n_per_arm=6, seed=0)
+    plot_counterfactual_pairs(scenario="IV", n=6, seed=1)
+    sanity_check_mean_invariance(scenario="IV", n=5000, seed=3)
